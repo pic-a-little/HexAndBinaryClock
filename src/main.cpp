@@ -65,7 +65,7 @@ void setup(void)
 }
 
 int lastSec;
-unsigned nAryMode = AryHEX;
+unsigned nAryMode = AryDEC;
 unsigned currentHour, currentMin, currentSec;
 bool getLocalTimeSucceed = false;
 
@@ -76,6 +76,7 @@ void loop(void)
   {
     // Handle incoming connections
     server.handleClient();
+    Serial.println("AP-MODE");
     delay(100);
   }
   else //client mode
@@ -84,7 +85,16 @@ void loop(void)
     {
       ArduinoOTA.handle();
     }
-    if (connectionSuccess == true || (connectionSuccess != true && withRTC == true))
+    if (connectionSuccess == true)
+    {
+      updateDisplayWithModeChangeCheck();
+      //特定時間でadjustByNTP(bool withRTC);を追加　
+      if ((currentHour %6 == 0) && (currentMin == 58) && (currentSec == 50)){//void adjustByNTP(bool withRTC)は1秒以上かかるのでバカよけ入れていない
+        Serial.println("re-adjust");
+        adjustByNTP(withRTC);
+      } 
+    }
+    else if (connectionSuccess != true && withRTC == true)
     {
       updateDisplayWithModeChangeCheck();
     }
@@ -104,8 +114,10 @@ void updateDisplayWithModeChangeCheck()
   {
     getLocalTimeSucceed = getLocalTimebyRTCMode(&currentHour, &currentMin, &currentSec);
   }
+
   if (lastSec != currentSec && getLocalTimeSucceed == true)
   {
+    Serial.printf("display Update %d\n",currentSec);
     displayWholeTime(currentHour, currentMin, currentSec, nAryMode);
     lastSec = currentSec;
   }

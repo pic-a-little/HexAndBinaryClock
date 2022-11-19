@@ -29,8 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #if !defined(max)
 // MMOLE 180325:
 // min, max are no macro in ESP core 2.3.9 libraries, see https://github.com/esp8266/Arduino/issues/398
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
+#define __min(a,b) ((a)<(b)?(a):(b))
+#define __max(a,b) ((a)>(b)?(a):(b))
 #endif
 
 #define TM16XX_CMD_DATA_AUTO 0x40
@@ -45,19 +45,22 @@ class TM16xx
 {
   public:
     /**
-     * Instantiate a tm16xx module specifying data, clock and stobe pins,
-     * the maximum number of displays supported by the chip, 
+     * Instantiate a TM16xx module specifying data, clock and strobe pins (no strobe on some modules),
+     * the maximum number of displays supported by the chip (as provided by derived chip specific class), 
      * the number of digits used to display numbers or text, 
      * display state and the starting intensity (0-7).
      */
-    TM16xx(byte dataPin, byte clockPin, byte strobePin, byte maxDisplays, byte digits, boolean activateDisplay=true,	byte intensity=7);
+    TM16xx(byte dataPin, byte clockPin, byte strobePin, byte maxDisplays, byte nDigitsUsed, boolean activateDisplay=true,	byte intensity=7);
 
     /** Set the display (segments and LEDs) active or off and intensity (range from 0-7). */
     virtual void setupDisplay(boolean active, byte intensity);
 
     /** Clear the display */
 		virtual void clearDisplay();
+
+    /** Set segments of the display */
 	  virtual void setSegments(byte segments, byte position);
+	  virtual void setSegments16(uint16_t segments, byte position);   // some modules support more than 8 segments
 	  
 	  // Basic display functions. For additional display features use the TM16xxDisplay class
     /** Set a single display at pos (starting at 0) to a digit (left to right) */
@@ -72,6 +75,8 @@ class TM16xx
     /** Set the display to the string (defaults to built in font) */
 		virtual void setDisplayToString(const char* string, const word dots=0, const byte pos=0, const byte font[] = TM16XX_FONT_DEFAULT);
 		virtual void sendChar(byte pos, byte data, boolean dot); // made public to allow calling from TM16xxDisplay
+		virtual byte getNumDigits(); // added as public menthod to allow calling from TM16xxDisplay
+		virtual void sendAsciiChar(byte pos, char c, boolean dot); // made public to allow calling from TM16xxDisplay
 
 		// Key-scanning functions
 		// Note: not all TM16xx chips support key-scanning and sizes are different per chip

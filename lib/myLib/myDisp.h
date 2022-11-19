@@ -1,6 +1,8 @@
 #pragma once
 
+#include <SPI.h>
 #include <TM1640.h>
+
 #define TactSW (4)
 
 #define AryDEC (10)

@@ -26,13 +26,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "TM16xx.h"
 //#include "string.h"
 
-TM16xx::TM16xx(byte dataPin, byte clockPin, byte strobePin, byte maxDisplays, byte digits, boolean activateDisplay,	byte intensity)
+TM16xx::TM16xx(byte dataPin, byte clockPin, byte strobePin, byte maxDisplays, byte nDigitsUsed, boolean activateDisplay,	byte intensity)
 {
   this->dataPin = dataPin;
   this->clockPin = clockPin;
   this->strobePin = strobePin;
   this->_maxDisplays = maxDisplays;
-  this->digits = digits;
+  this->digits = nDigitsUsed;
 
   pinMode(dataPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
@@ -61,7 +61,7 @@ TM16xx::TM16xx(byte dataPin, byte clockPin, byte strobePin, byte maxDisplays, by
 
 void TM16xx::setupDisplay(boolean active, byte intensity)
 {
-  sendCommand(TM16XX_CMD_DISPLAY | (active ? 8 : 0) | min(7, intensity));
+  sendCommand(TM16XX_CMD_DISPLAY | (active ? 8 : 0) | __min(7, intensity));
 }
 
 void TM16xx::clearDisplay()
@@ -92,6 +92,16 @@ void TM16xx::setSegments(byte segments, byte position)
 		//sendData(TM16XX_CMD_ADDRESS | position, segments);
 }
 
+void TM16xx::setSegments16(uint16_t segments, byte position)
+{	// Some modules support more than 8 segments (e.g. 10 max for TM1638)
+  // The position of the additional segments in the second data byte can be different per module,
+  // For that reason this module has no implementation in the base class.
+  // E.g. for TM1638/TM1668 segments 8-9 are in bits 0-1, for TM1630 segment 14 is in bit 5
+  // This method assumes segments 0-7 to be in the lower byte and the extra segments in the upper byte
+  // Depending on the module this method should shift the segments to the proper data position.
+}
+
+
 void TM16xx::sendChar(byte pos, byte data, boolean dot)
 {
 /*
@@ -100,6 +110,15 @@ void TM16xx::sendChar(byte pos, byte data, boolean dot)
 */
 	setSegments(data | (dot ? 0b10000000 : 0), pos);
 }
+
+void TM16xx::sendAsciiChar(byte pos, char c, boolean fDot)
+{ // Method to send an Ascii character to the display
+  // This method is also called by TM16xxDisplay.print to display characters
+  // The base class uses the default 7-segment font to find the LED pattern.
+  // Derived classes for multi-segment displays or alternate layout displays can override this method
+  sendChar(pos, pgm_read_byte_near(TM16XX_FONT_DEFAULT+(c - 32)), fDot);
+}
+
 
 void TM16xx::setDisplayDigit(byte digit, byte pos, boolean dot, const byte numberFont[])
 {
@@ -134,13 +153,18 @@ void TM16xx::setDisplay(const byte values[], byte size)
 void TM16xx::setDisplayToString(const char* string, const word dots, const byte pos, const byte font[])
 {
   for (int i = 0; i < digits - pos; i++) {
-  // for (int i = 0; i < 6 - pos; i++) {
   	if (string[i] != '\0') {
-		  sendChar(i + pos, pgm_read_byte_near(font+(string[i] - 32)), (dots & (1 << (digits - i - 1))) != 0);
+		  //sendChar(i + pos, pgm_read_byte_near(font+(string[i] - 32)), (dots & (1 << (digits - i - 1))) != 0);
+  	  sendAsciiChar(i + pos, string[i], (dots & (1 << (digits - i - 1))) != 0);
 		} else {
 		  break;
 		}
   }
+}
+
+byte TM16xx::getNumDigits()
+{	// get the number of digits used (needed by TM16xxDisplay to combine modules)
+  return(digits);
 }
 
 // key-scanning method, implemented in chip specific derived class
@@ -157,6 +181,17 @@ uint32_t TM16xx::getButtons()
 void TM16xx::bitDelay()
 {	// if needed derived classes can add a delay (eg. for TM1637)
 	//delayMicroseconds(50);
+
+  // On fast MCUs like ESP32 a delay is required, especially when reading buttons
+  // The TM1638 datasheet specifies a max clock speed of 1MHz. 
+  // Testing shows that without delay the CLK line exceeds 1.6 MHz on the ESP32. While displaying data still worked, reading buttons failed.
+  // Adding a 1us delay gives clockpulses of about 1.75us-2.0us (~ 250kHz) on an ESP32 @240MHz and a similar delay on an ESP8266 @160Mhz.
+  // An ESP32 running without delay at 240MHz gave a CLK of  ~0.3us (~ 1.6MHz)
+  // An ESP8266 running without delay at 160MHz gave a CLK of  ~0.9us (~ 470kHz)
+  // An ESP8266 running without delay  at 80MHz gave a CLK of  ~1.8us (~ 240kHz)
+	#if F_CPU>100000000
+  	delayMicroseconds(1);
+  #endif
 }
 
 void TM16xx::start()

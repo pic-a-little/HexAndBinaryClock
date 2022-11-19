@@ -1,17 +1,30 @@
 #include "myClock.h"
 #include "myDisp.h"
 
-
 RTC_DS3231 rtc;
 
+/* struct tm
+{
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
+}; */
+
 struct tm timeinfo;
+
 bool initRTC()
 {
     // RTC初期化
     if (!rtc.begin())
     {
         Serial.println("Couldn't find RTC");
-        //dispModule.setDisplayToString("no rtc");
+        // dispModule.setDisplayToString("no rtc");
         delay(1000);
         return false;
     }
@@ -42,7 +55,11 @@ void adjustByNTP(bool withRTC)
     delay(1000);
     // dispModule.clearDisplay();
 
-    configTime(9 * 3600L, 0, "ntp.nict.jp", "time.google.com", "ntp.jst.mfeed.ad.jp"); //NTPの設定
+    configTime(9 * 3600L, 0, "ntp.nict.jp", "time.google.com", "ntp.jst.mfeed.ad.jp"); // NTPの設定
+    while (!getLocalTime(&timeinfo))
+    {
+        delay(500);
+    }
     if (withRTC == true && (getLocalTime(&timeinfo) == true))
     {
         updateRTC(timeinfo);

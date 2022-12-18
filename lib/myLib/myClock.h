@@ -1,5 +1,6 @@
 #include <RTClib.h>
 #include <Wire.h>
+#include <esp_sntp.h>
 
 extern RTC_DS3231 rtc;
 extern bool withRTC;

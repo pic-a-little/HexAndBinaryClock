@@ -90,6 +90,8 @@ void loop(void)
       updateDisplayWithModeChangeCheck();
       //特定時間でadjustByNTP(bool withRTC);を追加　
       if ((currentHour %6 == 0) && (currentMin == 58) && (currentSec == 50)){//void adjustByNTP(bool withRTC)は1秒以上かかるのでバカよけ入れていない
+//      if ((currentMin %2 == 0) && (currentSec == 50)){//void adjustByNTP(bool withRTC)は1秒以上かかるのでバカよけ入れていない
+
         Serial.println("re-adjust");
         adjustByNTP(withRTC);
       } 

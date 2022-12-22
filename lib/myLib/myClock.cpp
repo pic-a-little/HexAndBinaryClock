@@ -57,21 +57,29 @@ void adjustByNTP(bool withRTC)
 
     //configTime(9 * 3600L, 0, "ntp.nict.jp", "time.google.com", "ntp.jst.mfeed.ad.jp"); // NTPの設定
     configTzTime("JST-9", "ntp.nict.jp", "time.google.com", "ntp.jst.mfeed.ad.jp");
-    Serial.print("[NTP Svr] Connecting.");
+    Serial.println("[NTP Svr] Connecting.");
     u8_t retryCount = 0;
-    while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET ) {
-        Serial.print(".");
-        //dispModule.setDisplayToString("rEtrY    ");
-        delay(1000); // 1秒毎にリトライ
-        retryCount++;
-        if (retryCount > 10){
-            dispModule.setDisplayToString("ntPErr");
-            delay(5000);
+    sntp_sync_status_t sntpGetSyncStatus;
+    for(retryCount=0;retryCount<=10;retryCount++){
+        sntpGetSyncStatus = sntp_get_sync_status();
+        if (sntpGetSyncStatus != SNTP_SYNC_STATUS_RESET){
             break;
         }
+        Serial.printf("configTzTime retry %d\n",retryCount);
+        //dispModule.setDisplayToString("rEtrY    ");
+        delay(1000); // 1秒毎にリトライ
     }
-    dispModule.setDisplayToString("    ok###");
-    delay(1000);
+    Serial.printf("sntp_get_sync_status() = %d\n",sntpGetSyncStatus);
+    if(sntpGetSyncStatus == SNTP_SYNC_STATUS_RESET ){
+        dispModule.setDisplayToString("ntPErr");
+        delay(5000);
+    }else if(sntpGetSyncStatus == SNTP_SYNC_STATUS_COMPLETED){
+        dispModule.setDisplayToString("    ok###");
+        delay(1000);
+    }else{
+        dispModule.setDisplayToString("smooth###");
+        delay(1000);        
+    }
     while (!getLocalTime(&timeinfo))
     {
         delay(500);
